@@ -1,0 +1,36 @@
+蓝牙模块说明文档：
+初始化：
+void Bluetooth_uart5(void)
+注意：如果我们想通过串口助手发送数据给蓝牙，那么我们就可以通过设置串口（如串口1）为接受中断模式，当我们在串口助手上发送的数据时我们就可以通过该串口的接受中断接收到我们发送的数据，并把该数据传送给我们需要传送的变量。然后通过该变量将数据发送给蓝牙
+unsigned char blue_tooch_ch=0,blue_tooch_ch1=0;
+void USART2_IRQHandler(void)			   //串口4全局中断服务函数
+{
+	if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET)  //接收中断有效,若接收数据寄存器满
+	{
+		blue_tooch_ch1=USART_ReceiveData(USART2);//接受蓝牙发送给串口4的数据
+		usart2_SendByte(blue_tooch_ch1);//将串口4的数据发送给蓝牙
+		printf("%c",blue_tooch_ch);
+	}
+}
+
+收获1：注意串口1~3用的是USART1_IRQn\USART2_IRQn\USART3_IRQn\串口4~5用的是UART4_IRQn、UART5_IRQn
+例：NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
+
+     注意UART4和上面同理
+void usart2_SendByte(unsigned char SendData)	  //用串口3发送一个字节数据
+{	   
+	USART_SendData(USART2,SendData);   //用串口3发送一个字节
+	while(USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);  //等待串口3发送完毕
+}
+收获2：   在<<STM32不完全手册里面>>，他们所有的例程都采用了一个叫STM32F10x.s的启动文件，里面定义了STM32的堆栈大小以及各种中断的名字及入口函数名称，还有启动相关的汇编代码。STM32F10x.s是MDK提供的启动代码，从其里面的内容看来，它只定义了3个串口，4个定时器。实际上STM32的系列产品有5个串口的型号，也只有有2个串口的型号，定时器也是，做多的有8个定时器。比如，如果你用的STM32F103ZET6，而启动文件用的是STM32F10x.s的话，你可以正常使用串口1~3的中断，而串口4和5的中断，则无法正常使用。又比如，你TIM1~4的中断可以正常使用，而5~8的，则无法使用。
+    所以STM32F10x.s并不能适用所有的STM32型号，这样，他们就得对不同型号的STM32，选择不同的启动文件。ST给我们提供了3个启动文件，分别适用于不同容量的STM32芯片。他们是： 
+startup_stm32f10x_ld.s
+startup_stm32f10x_md.s
+startup_stm32f10x_hd.s
+其中，ld.s适用于小容量 产品；md.s适用于中等容量产品；hd适用于大容量产品；
+ 这里的容量是指FLASH的大小.判断方法如下：
+ 小容量：FLASH≤32K
+中容量：64K≤FLASH≤128K
+大容量：256K≤FLASH
+他们开发板使用的是STM32F103RBT6，FLASH容量为128K，属于中等容量产品，而STM32F10x.s刚刚好是满足中等容量型号的启动文件，所以我们使用STM32F10x.s是不会有问题的，他相当于startup_stm32f10x_md.s。而如果你的是小容量或者大容量的STM32,则相应的选择startup_stm32f10x_ld.s或startup_stm32f10x_hd.s即可。
+

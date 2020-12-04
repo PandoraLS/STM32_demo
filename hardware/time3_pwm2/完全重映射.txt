@@ -1,0 +1,42 @@
+完全重映射：
+RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE); //复用时钟使能
+所以 TIM3 完全重映射的库函数实现方法是：
+GPIO_PinRemapConfig(GPIO_FullRemap_TIM3 , ENABLE); //完全重映射
+通道一：
+TIM_OC1Init(TIM3, &TIM_OCInitStructure);	
+TIM_OC1PreloadConfig(TIM3, TIM_OCPreload_Enable);
+通道2：
+TIM_OC2Init(TIM3, &TIM_OCInitStructure);	
+TIM_OC2PreloadConfig(TIM3, TIM_OCPreload_Enable);
+通道3：
+TIM_OC3Init(TIM3, &TIM_OCInitStructure);	
+TIM_OC3PreloadConfig(TIM3, TIM_OCPreload_Enable);
+通道4：
+TIM_OC4Init(TIM3, &TIM_OCInitStructure);	
+TIM_OC4PreloadConfig(TIM3, TIM_OCPreload_Enable);
+硬件连接：|PC.06: (TIM3_CH1)  |
+          |PC.07: (TIM3_CH2)  |
+          |PC.08: (TIM3_CH3)  | 
+          |PC.09: (TIM3_CH4)  |
+
+功能：     输出PWM
+
+作者：     逆风
+
+实验平台： 野火STM32开发板
+
+软件仿真： 步骤见零死角玩转stm32PDF,315页，最后还要点一下AUTO(logic analyzer)
+           IN--放大波形
+           OUT--缩小波形
+设置方法二：
+/* PWM1 Mode configuration: Channel1 */
+  TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM2;	    //配置为PWM模式1
+  TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;	
+  //TIM_OCInitStructure.TIM_Pulse = CCR1_Val;	   //设置跳变值，当计数器计数到这个值时，电平发生跳变
+  TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;  //当定时器计数值小于CCR1_Val时为高电平
+
+  TIM_OC1Init(TIM3, &TIM_OCInitStructure);	 //使能通道1
+
+  TIM_OC1PreloadConfig(TIM3, TIM_OCPreload_Enable);
+在主函数里面的调用方式：
+TIM_SetCompare1(TIM3,CCR1_Val);//这样可以设置其占空比（其他通道以此类推）

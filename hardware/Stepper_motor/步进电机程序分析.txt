@@ -1,0 +1,29 @@
+步进电机程序说明：
+/*TIM3的配置*/
+TIM_TimeBaseStructure.TIM_Period = 2*waveNumber;	 //当定时器从0计数到waveNumber*2，即为waveNumber*2次，为一个定时周期					
+TIM_TimeBaseStructure.TIM_Prescaler = PWM_Period/2-1;//设置预分频：PWM_Period/2，TIM3时钟频率为36MHz/（PWM_Period/2）,PWM_Period/2-1(从零开始计数所以要减)
+TIM_OCInitStructure.TIM_Pulse =2*waveNumber-1;;//设置跳变值，当计数器计数到这个值时，电平发生跳变
+/*TIM1的配置*/
+TIM_TimeBaseStructure.TIM_Period = PWM_Period;//从零开始算起所以要减1	
+TIM_TimeBaseStructure.TIM_Prescaler = 0;//实际出的值为1	
+TIM_OCInitStructure.TIM_Pulse = PWM_Period/2;
+
+第一：TIM3的频率为f3=(36*10^6)/（(PWM_Period/2）*（2*waveNumber）).
+第二：TIM1的频率为f1=(72*10^6)/(PWM_Period).
+第三：N=f1/f3=2*waveNumber，我们通过调整waveNumber的值来控制输出脉冲个数，测试程序是我的驱动设置的是半步细分，所以我给电机400的脉冲，电机可以运行360度。
+
+通过测试发现（空载的情况）：如果我们一直以一个固定的频率控制电机运动，只要频率范围在500HZ~2000HZ之间电机不会发生失步或堵转，如果直接通过stepper_low_speed_Move(400,1000);stepper_low_speed_Move(400,2000);这种方式连续控制就会出现严重的堵转或失步。这是就要考虑用加减速函数来处理。
+stop_tim3()这个函数的目的是让电机运行stepper_low_speed_Move(400,1000);完这个后停下来。(程序里面没用这个函数)
+
+在控制电机S曲线加减速时，算法见《基于AT91SAM9261的步进电机S曲线加减速控制研究与实现》pdf文档
+如果我们想让步进电机加减速时间减少之间控制stepper_chc值，他的值越大加减速时间越少。（加速时间要在加速子程序中修改stepper_chc，减速时间要在减速子程序中修改stepper_chc）
+
+型号为：57BYG250B
+此步进电机的如果以恒定频率启动，它将在2000以上就会出现失步或堵转。如何测试步进电机以恒定频率启动，它的最大允许频率。
+通过按键控制其转固定角度经过足够多次数测试发现电机并没有出现失步和堵转。逐渐加频率，直到开始出现堵转现象，刚刚出现
+堵转现象的这个频率成为电机最大允许频率。一般去最大允许频率-300以上为我们设定的最大允许频率.
+
+程序体会：通过本次程序设计，遇到了两个问题
+第一：double InfT=sqrt(2.0*(InfF-StaF)/stepper_chc);//像这样的浮点运算如果InfF、StaF、stepper_chc都是整形，如果2.0改成2，那么这个程序运行的结果也为整形，sqrt(2*(InfF-StaF)/stepper_chc)为整数，导致double InfT没意义。浮点运算时候一定要注意，计算的类型。
+第二：如果调试程序调试了很久还是没出现结果，就一步一步的验证程序，这样效率会更快。（比如通过串口，oled，led灯等等），验证一个一个数据.
+
